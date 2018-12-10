@@ -33,8 +33,9 @@
 #include <logging/log_ctrl.h>
 
 /*设置ESB总线所需导入头文件*/
-#include <k5_esb.h>
+//#include <k5_esb.h>
 #include <irq_offload.h>
+#include <k5_shared_memory.h>
 
 /* kernel build timestamp items */
 #define BUILD_TIMESTAMP "BUILD: " __DATE__ " " __TIME__
@@ -299,9 +300,9 @@ static int esb_server(){
                 if(esb.dst_port!=NULL){
                 	search_server_num(serv_num,&esb);//查找服务向量表,调用系统服务
                 	printk("挂起客户端  ");
-					k_thread_suspend(&client);   /*test*/
+					k_thread_suspend(esb.src_port);   /*test*/
 					printk("恢复服务器\n");
-					k_thread_resume(&server);    /*test*/
+					k_thread_resume(esb.dst_port);    /*test*/
 					kk_reply(&esb,0,0,NULL);
                  }
                 else{
@@ -311,6 +312,7 @@ static int esb_server(){
 			}//结束K5_CALL原语分支
 	        case K5_WAIT:{
 	        	if(esb.src_port!=NULL){
+	        		
 	        		search_server_num(serv_num,&esb);
 	        		printk("挂起服务器等待访问\n");
 	        	    k_thread_suspend(&server);  /*test*/
@@ -332,7 +334,7 @@ static int esb_server(){
 	        case K5_REPLY:{
 	        	if(esb.src_port!=NULL){
 	        	    search_server_num(serv_num,&esb);
-	        	    k_thread_resume(&client); /*test*/
+	        	    k_thread_resume(esb.src_port); /*test*/
 	        	    kk_reply(&esb,0,0,NULL);
 	  	        }
 	  	        else{
@@ -447,8 +449,8 @@ static void bg_thread_main(void *unused1, void *unused2, void *unused3)
 	_ready_thread(_esb_thread);  
 
     /*ESB:初始化esb_server线程与主线程的通信消息队列*/  
-	k_msgq_init(&my_msgq,msgq_buf,4,512);
-	k_msgq_init(&my_msgq_callback,msgq_buf_callback,4,512);
+	k_msgq_init(&my_msgq,msgq_buf,4,500);
+	k_msgq_init(&my_msgq_callback,msgq_buf_callback,4,500);
     
      /*ESB:设置中断处理函数*/
     offload_routine = svc_trap;
